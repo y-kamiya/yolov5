@@ -17,6 +17,9 @@ from utils.general import (
     xyxy2xywh, plot_one_box, strip_optimizer, set_logging)
 from utils.torch_utils import select_device, load_classifier, time_synchronized
 
+import json
+import sys
+
 
 def detect(save_img=False):
     out, source, weights, view_img, save_txt, imgsz = \
@@ -62,6 +65,7 @@ def detect(save_img=False):
     t0 = time.time()
     img = torch.zeros((1, 3, imgsz, imgsz), device=device)  # init img
     _ = model(img.half() if half else img) if device.type != 'cpu' else None  # run once
+    cut_img_map = {}
     for path, img, im0s, vid_cap in dataset:
         img = torch.from_numpy(img).to(device)
         img = img.half() if half else img.float()  # uint8 to fp16/32
@@ -82,6 +86,7 @@ def detect(save_img=False):
             pred = apply_classifier(pred, modelc, img, im0s)
 
         # Process detections
+        im0_orig = im0s[i].copy() if webcam else im0s.copy()
         for i, det in enumerate(pred):  # detections per image
             if webcam:  # batch_size >= 1
                 p, s, im0 = path[i], '%g: ' % i, im0s[i].copy()
@@ -103,6 +108,12 @@ def detect(save_img=False):
 
                 # Write results
                 for *xyxy, conf, cls in reversed(det):
+                    if opt.save_cut_img:
+                        output_path = '{}/{}@{}.png'.format(out, os.path.basename(txt_path), i)
+                        x1, y1, x2, y2 = int(xyxy[0]), int(xyxy[1]), int(xyxy[2]), int(xyxy[3])
+                        cv2.imwrite(output_path, im0_orig[y1:y2, x1:x2])
+                        cut_img_map[output_path] = p
+
                     if save_txt:  # Write to file
                         xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
                         with open(txt_path + '.txt', 'a') as f:
@@ -143,6 +154,11 @@ def detect(save_img=False):
         if platform.system() == 'Darwin' and not opt.update:  # MacOS
             os.system('open ' + save_path)
 
+    if opt.save_cut_img:
+        cut_json_path = os.path.join(out, 'cut.json')
+        with open(cut_json_path, 'w') as f:
+            f.write(json.dumps(cut_img_map))
+
     print('Done. (%.3fs)' % (time.time() - t0))
 
 
@@ -161,6 +177,7 @@ if __name__ == '__main__':
     parser.add_argument('--agnostic-nms', action='store_true', help='class-agnostic NMS')
     parser.add_argument('--augment', action='store_true', help='augmented inference')
     parser.add_argument('--update', action='store_true', help='update all models')
+    parser.add_argument('--save-cut-img', action='store_true', help='')
     opt = parser.parse_args()
     print(opt)
 
