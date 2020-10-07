@@ -24,7 +24,7 @@ import sys
 def detect(save_img=False):
     out, source, weights, view_img, save_txt, imgsz = \
         opt.output, opt.source, opt.weights, opt.view_img, opt.save_txt, opt.img_size
-    webcam = source.isnumeric() or source.startswith(('rtsp://', 'rtmp://', 'http://')) or source.endswith('.txt')
+    webcam = source.isnumeric() or source.startswith(('rtsp://', 'rtmp://', 'http://'))
 
     # Initialize
     set_logging()
