@@ -121,6 +121,7 @@ class LoadImages:  # for inference
             files = [p]  # files
         else:
             raise Exception('ERROR: %s does not exist' % p)
+        print(files)
 
         images = [x for x in files if os.path.splitext(x)[-1].lower() in img_formats]
         videos = [x for x in files if os.path.splitext(x)[-1].lower() in vid_formats]

@@ -17,7 +17,9 @@ from utils.general import (
     xyxy2xywh, plot_one_box, strip_optimizer, set_logging)
 from utils.torch_utils import select_device, load_classifier, time_synchronized
 
+import numpy as np
 import json
+import hashlib
 import sys
 
 
@@ -54,7 +56,7 @@ def detect(save_img=False):
         cudnn.benchmark = True  # set True to speed up constant image size inference
         dataset = LoadStreams(source, img_size=imgsz)
     else:
-        save_img = True
+        save_img = not opt.save_cut_img
         dataset = LoadImages(source, img_size=imgsz)
 
     # Get names and colors
@@ -109,9 +111,11 @@ def detect(save_img=False):
                 # Write results
                 for *xyxy, conf, cls in reversed(det):
                     if opt.save_cut_img:
-                        output_path = '{}/{}@{}.png'.format(out, os.path.basename(txt_path), i)
                         x1, y1, x2, y2 = int(xyxy[0]), int(xyxy[1]), int(xyxy[2]), int(xyxy[3])
-                        cv2.imwrite(output_path, im0_orig[y1:y2, x1:x2])
+                        img = np.ascontiguousarray(im0_orig[y1:y2, x1:x2])
+                        hash = hashlib.md5(img).hexdigest()
+                        output_path = '{}/{}@{}.png'.format(out, os.path.basename(txt_path), hash)
+                        cv2.imwrite(output_path, img)
                         cut_img_map[output_path] = p
 
                     if save_txt:  # Write to file
